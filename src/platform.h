@@ -21,6 +21,8 @@
 #define sw_atomic_dec_32(dst) (uint32_t)_InterlockedDecrement((volatile long*)(dst))
 #define sw_atomic_cas_32(dst, cmp, value) (uint32_t)_InterlockedCompareExchange(((volatile long*)dst), (long)(value), (long)(cmp))
 #define sw_atomic_swap_32(dst, value) (uint32_t)_InterlockedExchange((volatile long*)(dst), (long)(value))
+
+#define sw_atomic_swap_ptr(dst, value) _InterlockedExchangePointer((void*volatile*)(dst), (void*)(value))
 #define sw_atomic_cas_ptr(dst, cmp, value) _InterlockedCompareExchangePointer(((void*volatile*)dst), (void*)(value), (void*)(cmp))
 
 // -- Allocation
@@ -44,8 +46,7 @@ sw_buf_grow_size(void **p_data, size_t *p_cap, size_t num, size_t size)
 
 typedef struct sw_os_mutex sw_os_mutex;
 typedef struct sw_mutex {
-	uint32_t state;
-	void *os_mutex;
+	void *state;
 } sw_mutex;
 
 void sw_mutex_lock(sw_mutex *m);

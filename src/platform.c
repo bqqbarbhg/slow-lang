@@ -17,35 +17,53 @@ void sw_buf_realloc(void **data, size_t *p_cap, size_t num, size_t size)
 
 // -- Mutex
 
-HANDLE g_os_events[7];
+struct sw_os_mutex {
+	CRITICAL_SECTION cs;
+};
 
-void sw_os_wait(void *ptr)
+sw_os_mutex *sw_os_mutex_alloc()
 {
-	size_t ix = ((uintptr_t)ptr >> 3) & sw_arraycount(g_os_events);
+	sw_os_mutex *m = sw_alloc(sw_os_mutex);
+	if (!m) return NULL;
+	InitializeCriticalSection(&m->cs);
+	return m;
 }
 
-void sw_os_signal(void *ptr)
+void sw_os_mutex_free(sw_os_mutex *m)
 {
-	size_t ix = ((uintptr_t)ptr >> 3) & sw_arraycount(g_os_events);
+	if (!m) return;
+	DeleteCriticalSection(&m->cs);
+	sw_free(m);
+}
+
+void sw_os_mutex_lock(sw_os_mutex *m)
+{
+	EnterCriticalSection(&m->cs);
+}
+
+void sw_os_mutex_unlock(sw_os_mutex *m)
+{
+	LeaveCriticalSection(&m->cs);
 }
 
 static char simple_lock[1];
 
 void sw_mutex_lock(sw_mutex *m)
 {
-	if (sw_atomic_swap_32(&m->state, 1) == 0) return;
-	while (sw_atomic_swap_32(&m->state, 2) != 0) {
-		sw_os_wait(m);
+	void *prev = sw_atomic_swap_ptr(&m->state, simple_lock);
+	if (prev == NULL) return;
+
+	sw_os_mutex *m = sw_os_mutex_alloc();
+	prev = sw_atomic_swap_ptr(&m->state, m);
+	if (prev == NULL) {
 	}
+
 }
 
 void sw_mutex_unlock(sw_mutex *m)
 {
-	uint32_t prev = sw_atomic_swap_32(&m->state, 1);
-	sw_assert(prev != 0);
-	if (prev == 2) {
-		sw_os_signal(m);
-	}
+	uint32_t prev = sw_atomic_dec_32(&m->state);
+	if (prev == 1) return;
 }
 
 // -- Threads
