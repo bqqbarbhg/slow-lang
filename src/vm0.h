@@ -7,7 +7,9 @@ typedef struct sw_thread sw_thread;
 
 struct sw_thread {
 	sw_vm *vm;
-	sw_mutex *mutex;
+	sw_mutex *exec_mutex;
+	sw_mutex *halt_mutex;
+	sw_os_thread_id os_thread;
 };
 
 struct sw_vm {
@@ -19,8 +21,9 @@ struct sw_vm {
 };
 
 sw_vm *sw_make_vm();
+void sw_free_vm(sw_vm *vm);
 
-sw_thread *sw_make_thread(sw_vm *vm);
+sw_thread *sw_get_thread(sw_vm *vm);
 void sw_free_thread(sw_thread *thread);
 
 void sw_exec(sw_thread *thread);

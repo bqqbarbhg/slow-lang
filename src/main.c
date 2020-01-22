@@ -6,7 +6,7 @@ sw_vm *g_vm;
 
 void thread_func(void *user)
 {
-	sw_thread *thread = sw_make_thread(g_vm);
+	sw_thread *thread = sw_get_thread(g_vm);
 
 	sw_exec(thread);
 
@@ -21,7 +21,7 @@ int main(int argc, char **argv)
 		*p_thread = sw_start_os_thread(&thread_func, NULL);
 	}
 
-	sw_thread *thread = sw_make_thread(g_vm);
+	sw_thread *thread = sw_get_thread(g_vm);
 
 	sw_exec(thread);
 	sw_collect_garbage(g_vm);

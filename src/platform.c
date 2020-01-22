@@ -17,33 +17,35 @@ void sw_buf_realloc(void **data, size_t *p_cap, size_t num, size_t size)
 
 // -- Mutex
 
-struct sw_mutex {
-	CRITICAL_SECTION cs;
-};
+HANDLE g_os_events[7];
 
-sw_mutex *sw_mutex_alloc()
+void sw_os_wait(void *ptr)
 {
-	sw_mutex *m = sw_alloc(sw_mutex);
-	if (!m) return NULL;
-	InitializeCriticalSection(&m->cs);
-	return m;
+	size_t ix = ((uintptr_t)ptr >> 3) & sw_arraycount(g_os_events);
 }
 
-void sw_mutex_free(sw_mutex *m)
+void sw_os_signal(void *ptr)
 {
-	if (!m) return;
-	DeleteCriticalSection(&m->cs);
-	sw_free(m);
+	size_t ix = ((uintptr_t)ptr >> 3) & sw_arraycount(g_os_events);
 }
+
+static char simple_lock[1];
 
 void sw_mutex_lock(sw_mutex *m)
 {
-	EnterCriticalSection(&m->cs);
+	if (sw_atomic_swap_32(&m->state, 1) == 0) return;
+	while (sw_atomic_swap_32(&m->state, 2) != 0) {
+		sw_os_wait(m);
+	}
 }
 
 void sw_mutex_unlock(sw_mutex *m)
 {
-	LeaveCriticalSection(&m->cs);
+	uint32_t prev = sw_atomic_swap_32(&m->state, 1);
+	sw_assert(prev != 0);
+	if (prev == 2) {
+		sw_os_signal(m);
+	}
 }
 
 // -- Threads
@@ -81,4 +83,9 @@ void sw_detach_os_thread(sw_os_thread *thread)
 {
 	CloseHandle(thread->handle);
 	sw_free(thread);
+}
+
+sw_os_thread_id sw_get_os_thread_id()
+{
+	return GetCurrentThreadId();
 }
